@@ -148,6 +148,28 @@ if not IsHandleOf(P, TBasButton) then
   // reject: unknown or stale handle
 ```
 
+## Changing this repository
+
+Every commit here reaches two applications, and neither picks it up on its own.
+A submodule pins a commit, so both consumers keep building the old one until
+their pointer is moved:
+
+```bash
+# here
+git commit -am "..." && git push
+# then in each consumer's checkout
+cd engine && git pull && cd .. && git add engine && git commit
+```
+
+Forgetting the second half is silent: the consumer still compiles, still passes
+its tests, and is simply running the previous version of the engine.
+
+One file here is easy to miss when sweeping the other way round.
+`Libs/GUI/TimerLib.pas` is a FireMonkey library, and it lives in the engine
+rather than with the IDE's other GUI libraries because `exec.pas` depends on it.
+A change made across "the GUI libraries" in the IDE repository will not touch
+it, and it is the only GUI library that ships from here.
+
 ## Tests
 
 The automated suite lives in the IDE repository, under
