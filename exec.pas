@@ -431,10 +431,14 @@ type
 //application. A parked VM blocks the mechanism that would wake it, the wait
 //never ends, and the system reports the process as unresponsive.
 //
-//Hosts should consult this before installing ConfirmProc. Left unset, the
-//engine degrades BREAKPOINT to a trace dump of the frame, which is the part
-//that still carries meaning on a device, where the application is its own
-//debugger and there is no separate window to pause.
+//The engine consults this itself before parking, so no host can cause the hang
+//by assigning ConfirmProc where it cannot work. Hosts should still consult it,
+//since there is no point installing a handler that will never be called, but
+//the guarantee does not rest on their doing so.
+//
+//Where the VM may not park, BREAKPOINT degrades to a trace dump of the frame,
+//which is the part that still carries meaning on a device, where the
+//application is its own debugger and there is no separate window to pause.
 function CanPauseForHostDialog: Boolean;
 
 implementation
@@ -1567,11 +1571,16 @@ begin
   if Assigned(FPrintProc) then
     FPrintProc(PChar('[BREAKPOINT] ' + bkptMsg + ' (Line ' + IntToStr(srcLine) + ')' + System.sLineBreak));
 
-  //With no host to ask, a breakpoint cannot stop anything, so report the whole
-  //frame instead of just the message and carry on. Where the VM cannot be
-  //parked at all -- see CanPauseForHostDialog -- this dump is everything a
-  //breakpoint can offer, so it carries what the dialog would have shown.
-  if not Assigned(FConfirmProc) then
+  //Two things must hold before the VM may park: someone to ask, and a platform
+  //that can answer a thread this very call has already blocked. The engine
+  //checks both itself rather than trusting the host to have checked, so a host
+  //that assigns ConfirmProc unconditionally cannot hang on Android or iOS. It
+  //gets the report below instead.
+  //
+  //Failing either, report the whole frame rather than the message alone: this
+  //dump is then everything a breakpoint can offer, so it carries what the
+  //dialog would have shown.
+  if not (Assigned(FConfirmProc) and CanPauseForHostDialog) then
   begin
     if Assigned(FPrintProc) then
       for i := 0 to varCount - 1 do

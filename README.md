@@ -101,15 +101,19 @@ is the very thing that called into the application: a parked VM blocks the
 mechanism that would wake it, the wait never ends, and the system kills the
 process as unresponsive.
 
-Hosts should gate the assignment rather than discover this on a device:
+The engine consults this itself before parking, so a host that assigns
+`ConfirmProc` unconditionally cannot hang: on those platforms the VM simply
+never parks. Hosts should still gate the assignment, since a handler that will
+never be called is worth not installing:
 
 ```pascal
 if CanPauseForHostDialog then   // declared in exec.pas
   Engine.ConfirmProc := HostConfirm;
 ```
 
-With `ConfirmProc` unset, `BREAKPOINT` reports the frame it would have shown --
-line, message and watched variables -- and execution continues:
+Wherever the VM may not park -- no `ConfirmProc`, or a platform that cannot
+answer -- `BREAKPOINT` reports the frame it would have shown (line, message and
+watched variables) and execution continues:
 
 ```
 [BREAKPOINT] checkpoint reached (Line 25)
