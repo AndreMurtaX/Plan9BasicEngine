@@ -1,4 +1,4 @@
-{******************************************************************************
+﻿{******************************************************************************
   Plan9Basic Interpreter Engine
 
   MIT License
@@ -73,15 +73,29 @@ unit HandleRegistry;
 interface
 
 uses
-  System.SysUtils, System.Generics.Collections, System.SyncObjs;
+  System.SysUtils, System.Classes, System.Generics.Collections, System.SyncObjs;
 
 type
+  THandleRegistry = class;
+
+  //Receives the notification TComponent sends when it is about to be destroyed.
+  //Objects that the libraries create but do not own -- FMX effects, and any
+  //control freed through its parent -- never pass through a destructor this
+  //code controls, so this is how their handles get revoked.
+  THandleWatcher = class(TComponent)
+  private
+    FRegistry: THandleRegistry;
+  protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+  end;
+
   THandleRegistry = class(TObject)
   private
     //Maps the pointer VALUE to the class it had when registered. Keeping the
     //class here is what makes validation possible without dereferencing.
     FItems: TDictionary<Pointer, TClass>;
     FLock: TCriticalSection;
+    FWatcher: THandleWatcher;
   public
     constructor Create();
     destructor Destroy(); override;
@@ -111,6 +125,15 @@ function IsHandleOf(P: Pointer; AClass: TClass): Boolean; inline;
 
 implementation
 
+{ THandleWatcher }
+
+procedure THandleWatcher.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  if (Operation = opRemove) and Assigned(FRegistry) then
+    FRegistry.Remove(AComponent);
+  inherited Notification(AComponent, Operation);
+end;
+
 { THandleRegistry }
 
 constructor THandleRegistry.Create();
@@ -118,6 +141,8 @@ begin
   inherited Create();
   FItems := TDictionary<Pointer, TClass>.Create();
   FLock := TCriticalSection.Create();
+  FWatcher := THandleWatcher.Create(nil);
+  FWatcher.FRegistry := Self;
 end;
 
 destructor THandleRegistry.Destroy();
@@ -130,6 +155,10 @@ begin
     FLock.Leave();
   end;
   FLock.Free();
+  //Detached first: from here on a late notification must not reach a freed
+  //registry.
+  FWatcher.FRegistry := nil;
+  FWatcher.Free();
   inherited Destroy();
 end;
 
@@ -145,6 +174,10 @@ begin
   finally
     FLock.Leave();
   end;
+  //Outside the lock: FreeNotification touches the component's own list, and
+  //holding this lock across it buys nothing.
+  if Assigned(FWatcher) and (Obj is TComponent) then
+    TComponent(Obj).FreeNotification(FWatcher);
 end;
 
 procedure THandleRegistry.Remove(Obj: TObject);

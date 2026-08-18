@@ -117,7 +117,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.JSON,
   System.Generics.Collections, System.Generics.Defaults, System.Math,
-  System.StrUtils, System.Character;
+  System.StrUtils, System.Character, HandleRegistry;
 
 const
   // Default token budget for RAG context injection
@@ -334,6 +334,7 @@ implementation
 constructor TRAGEngine.Create(const BasePath: String);
 begin
   inherited Create();
+  RegisterHandle(Self);
   FBasePath := IncludeTrailingPathDelimiter(BasePath);
   FIndexPath := FBasePath + 'index.json';
   FMaxTokens := RAG_DEFAULT_MAX_TOKENS;
@@ -354,6 +355,7 @@ end;
 
 destructor TRAGEngine.Destroy();
 begin
+  UnregisterHandle(Self);
   ClearIndex;
   FDocuments.Free();
   FDocById.Free();

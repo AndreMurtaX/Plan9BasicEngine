@@ -86,7 +86,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.JSON, System.Generics.Collections,
-  exec, UnitGC, UnitUtils, RAGEngine;
+  exec, UnitGC, UnitUtils, RAGEngine, HandleRegistry;
 
 const
   RAG_GC_TAG = 'BASIC_RAG';
@@ -101,7 +101,7 @@ implementation
 
 function ValidateRAG(P: Pointer; const FuncName: String): Boolean;
 begin
-  Result := (P <> nil) and (TObject(P) is TRAGEngine);
+  Result := (P <> nil) and (IsHandleOf(P, TRAGEngine));
   if not Result then
     raise Exception.CreateFmt('%s: invalid RAG engine handle', [FuncName]);
 end;

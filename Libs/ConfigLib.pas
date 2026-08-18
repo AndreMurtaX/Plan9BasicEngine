@@ -44,7 +44,7 @@ interface
 
 uses
   System.SysUtils, System.IniFiles, System.IOUtils, System.Classes,
-  exec, UnitGC;
+  exec, UnitGC, HandleRegistry;
 
 type
   // Configuration file wrapper class
@@ -179,7 +179,7 @@ begin
   if p = nil then
     raise Exception.CreateFmt('%s: Null config pointer', [funcName]);
 
-  if not (TObject(p) is TBasConfig) then
+  if not (IsHandleOf(p, TBasConfig)) then
     raise Exception.CreateFmt('%s: Invalid config object', [funcName]);
 end;
 
@@ -190,6 +190,7 @@ end;
 constructor TBasConfig.Create(const FilePath: String; AutoSave: Boolean);
 begin
   inherited Create();
+  RegisterHandle(Self);
   FFilePath := EnsureConfigPath(FilePath);
   FAutoSave := AutoSave;
   FModified := False;
@@ -199,7 +200,9 @@ begin
 end;
 
 destructor TBasConfig.Destroy();
+
 begin
+  UnregisterHandle(Self);
   // Auto-save on destroy if modified
   if FModified and Assigned(FIniFile) then
   begin
