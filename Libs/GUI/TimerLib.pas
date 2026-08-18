@@ -1,4 +1,4 @@
-{******************************************************************************
+﻿{******************************************************************************
   Plan9Basic Interpreter Engine
 
   MIT License
@@ -261,7 +261,7 @@ var
   Args: array[0..0] of TAsmData;
 begin
   if FOnTimerFunc = '' then Exit();
-  Args[0].p := Sender;
+  Args[0].p := Pointer(Self);
   Args[0].n := 0;
   Args[0].s := '';
   ExecuteCallback(LowerCase(FOnTimerFunc) + '@#', Args);
