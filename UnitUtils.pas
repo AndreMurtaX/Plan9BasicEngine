@@ -278,12 +278,12 @@ begin
     if Assigned(Method) then
       Result := true;
     //begin
-      // O método existe
-      //Metodo.Invoke(Controle, []); // Pode invocar o método
+      // The method exists
+      //Method.Invoke(Control, []); // It can be invoked
     //end
     //else
     //begin
-      // O método não está disponível
+      // The method is not available
     //end;
   finally
     Contexto.Free();
@@ -380,7 +380,7 @@ var
 begin
   Result := nil;
   tk := CurrentPath(Path);
-  if (tk.Current.Length > 0) and (tk.Next.Length > 0) then //Temos uma propriedade atual e uma próxima...
+  if (tk.Current.Length > 0) and (tk.Next.Length > 0) then //There is a current property and a next one...
   begin
     Ctx := TRttiContext.Create(); //Obtain the RTTI context
     T := Ctx.GetType(Obj.ClassInfo);
@@ -390,7 +390,7 @@ begin
     else
       Exit(nil);
   end
-  else if (tk.Current.Length > 0) and (tk.Next.Length = 0) then //Chegamos na propriedade que queremos o valor...
+  else if (tk.Current.Length > 0) and (tk.Next.Length = 0) then //We reached the property whose value we want...
   begin
     Ctx := TRttiContext.Create(); //Obtain the RTTI context
     T := Ctx.GetType(Obj.ClassInfo);
@@ -472,7 +472,7 @@ var
 begin
   Result := Null;
   tk := CurrentPath(Path);
-  if (tk.Current.Length > 0) and (tk.Next.Length > 0) then //Temos uma propriedade atual e uma próxima...
+  if (tk.Current.Length > 0) and (tk.Next.Length > 0) then //There is a current property and a next one...
   begin
     Ctx := TRttiContext.Create(); //Obtain the RTTI context
     T := Ctx.GetType(Obj.ClassInfo);
@@ -486,7 +486,7 @@ begin
       Exit(Null);
     end;
   end
-  else if (tk.Current.Length > 0) and (tk.Next.Length = 0) then //Chegamos na propriedade que queremos o valor...
+  else if (tk.Current.Length > 0) and (tk.Next.Length = 0) then //We reached the property whose value we want...
   begin
     Ctx := TRttiContext.Create(); //Obtain the RTTI context
     T := Ctx.GetType(Obj.ClassInfo);
@@ -633,7 +633,7 @@ var
 
 begin
   tk := CurrentPath(Prop);
-  if (tk.Current.Length > 0) and (tk.Next.Length > 0) then //Temos uma propriedade atual e uma próxima...
+  if (tk.Current.Length > 0) and (tk.Next.Length > 0) then //There is a current property and a next one...
   begin
     Ctx := TRttiContext.Create(); //Obtain the RTTI context
     T := Ctx.GetType(Obj.ClassInfo);
@@ -643,7 +643,7 @@ begin
     else
       Exit();
   end
-  else if (tk.Current.Length > 0) and (tk.Next.Length = 0) then //Chegamos na propriedade que queremos o valor...
+  else if (tk.Current.Length > 0) and (tk.Next.Length = 0) then //We reached the property whose value we want...
   begin
     Ctx := TRttiContext.Create(); //Obtain the RTTI context
     T := Ctx.GetType(Obj.ClassInfo);
@@ -702,7 +702,7 @@ var
 
 begin
   tk := CurrentPath(Prop);
-  if (tk.Current.Length > 0) and (tk.Next.Length > 0) then //Temos uma propriedade atual e uma próxima...
+  if (tk.Current.Length > 0) and (tk.Next.Length > 0) then //There is a current property and a next one...
   begin
     Ctx := TRttiContext.Create(); //Obtain the RTTI context
     T := Ctx.GetType(Obj.ClassInfo);
@@ -716,7 +716,7 @@ begin
       Exit();
     end;
   end
-  else if (tk.Current.Length > 0) and (tk.Next.Length = 0) then //Chegamos na propriedade que queremos o valor...
+  else if (tk.Current.Length > 0) and (tk.Next.Length = 0) then //We reached the property whose value we want...
   begin
     Ctx := TRttiContext.Create(); //Obtain the RTTI context
     T := Ctx.GetType(Obj.ClassInfo);

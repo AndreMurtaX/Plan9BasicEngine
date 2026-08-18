@@ -196,7 +196,7 @@ var
   escapeSequence: String;
   isEscaped: Boolean;
 
-  // Função auxiliar para converter caractere escapado em seu valor real
+  // Helper that converts an escaped character into its real value
   // Helper function to convert escaped character to its real value
   function ConvertEscapeSequence(ch: Char): String;
   begin
@@ -543,7 +543,7 @@ begin
     begin //if none of the above tests were satisfied...
       tokenPos := idx;  //...token unknown
       Inc(idx); //increment idx
-      tok := btkUnknown; //óbvio
+      tok := btkUnknown; //self-explanatory
       tokenLen := idx - tokenPos; //unknown token size
       SetString(tokenStr, pSource + tokenPos, tokenLen);
     end;

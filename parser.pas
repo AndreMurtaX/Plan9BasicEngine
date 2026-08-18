@@ -1420,7 +1420,7 @@ begin
 
   lexer.Advance();
 
-  //Caso a linha comece com um número do tipo ponto flutuante
+  //When the line starts with a floating point number
   if (lexer.CurrTok() = btkFloat) then
   begin
     status := BasTerminated;
@@ -4397,7 +4397,7 @@ begin
       //Update the line where the "ELSE" instruction is located to the jump
       //instruction to the "ENDIF" command.
       postfixCode[elsePos] := StrItem('JUMP ' + IntToStr(p), atkJump);
-      p := elsePos + 1; //esta é a posição logo após o comando "else"
+      p := elsePos + 1; //this is the position right after the "else" statement
     end;
     if eiTestArr.Count > 0 then
     begin

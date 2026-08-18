@@ -402,7 +402,7 @@ begin
   Lines := Text.Split([#13#10, #10, #13], TStringSplitOptions.None);
   if Length(Lines) = 0 then Exit();
 
-  // Primeira parte: concatena à última linha ou cria nova
+  // First part: append to the last line, or start a new one
   if output.Count = 0 then
     output.Add(Lines[0])
   else
@@ -411,11 +411,11 @@ begin
     output[LastIndex] := output[LastIndex] + Lines[0];
   end;
 
-  // Linhas adicionais (de quebras de linha no texto)
+  // Additional lines (from line breaks inside the text)
   for I := 1 to High(Lines) do
     output.Add(Lines[I]);
 
-  // Dispara evento AQUI - após o texto já estar no output
+  // Fire the event HERE - after the text is already in the output
   if Assigned(FOnPrintOutput) then
     FOnPrintOutput(Self, Text, False);
 end;

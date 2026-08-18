@@ -1,45 +1,46 @@
 # Plan9BasicEngine
 
-Núcleo do interpretador **Plan9Basic** e a biblioteca padrão compartilhada
-pelos projetos que o hospedam. Delphi / FireMonkey, MIT.
+Core of the **Plan9Basic** interpreter and the standard library shared by the
+projects that host it. Delphi / FireMonkey, MIT.
 
-Este repositório existe para que exista **uma única cópia** deste código. Ele é
-consumido como submódulo por:
+This repository exists so that there is **a single copy** of this code. It is
+consumed as a submodule by:
 
-| Projeto | Papel |
+| Project | Role |
 |---|---|
-| [Plan9Basic](https://github.com/AndreMurtaX/Plan9Basic) | IDE e ambiente de desenvolvimento |
-| [Plan9BasicAppletRunner](https://github.com/AndreMurtaX/Plan9BasicAppletRunner) | executor de applets distribuídos |
+| [Plan9Basic](https://github.com/AndreMurtaX/Plan9Basic) | IDE and development environment |
+| [Plan9BasicAppletRunner](https://github.com/AndreMurtaX/Plan9BasicAppletRunner) | runner for distributed applets |
 
-## Conteúdo
+## Contents
 
 ```
-basic.pas               TBasicEngine — fachada do engine para a aplicação hospedeira
-lexer.pas               tokenizador
-parser.pas              parser e gerador de código intermediário/assembly
-exec.pas                máquina de pilha que executa o assembly
-UnitUtils.pas           utilitários compartilhados
-utils/UnitGC.pas        coletor de lixo dos objetos não-visuais
-utils/HandleRegistry.pas validação de handles sem dereferenciar ponteiro do programa
-Libs/                   biblioteca padrão (Array, Str, Num, DateTime, Json, Http, Zip…)
-Libs/GUI/TimerLib.pas   timers — dependência de exec.pas
-Libs/AI/                cliente de IA e motor RAG
+basic.pas                TBasicEngine -- the engine's facade for the host application
+lexer.pas                tokenizer
+parser.pas               parser and generator of intermediate/assembly code
+exec.pas                 stack machine that executes the assembly
+UnitUtils.pas            shared utilities
+utils/UnitGC.pas         garbage collector for non-visual objects
+utils/HandleRegistry.pas handle validation that never dereferences a pointer
+                         supplied by the BASIC program
+Libs/                    standard library (Array, Str, Num, DateTime, Json, Http, Zip...)
+Libs/GUI/TimerLib.pas    timers -- a dependency of exec.pas
+Libs/AI/                 AI client and RAG engine
 ```
 
 ## Pipeline
 
 ```
-fonte BASIC
-   ↓  lexer.pas          tokenização
-   ↓  parser.pas         validação sintática → código intermediário postfix
-   ↓  ProcessPostfixCode geração de assembly
-   ↓  exec.pas           máquina de pilha executa
-saída
+BASIC source
+   |  lexer.pas          tokenization
+   |  parser.pas         syntax validation -> intermediate postfix code
+   |  ProcessPostfixCode assembly generation
+   |  exec.pas           stack machine executes
+output
 ```
 
-## Como usar
+## Using it
 
-Adicione como submódulo e aponte o `.dpr` para os caminhos dentro dele:
+Add it as a submodule and point the `.dpr` at the paths inside it:
 
 ```bash
 git submodule add https://github.com/AndreMurtaX/Plan9BasicEngine.git engine
@@ -55,39 +56,53 @@ uses
   UnitGC in 'engine\utils\UnitGC.pas',
   HandleRegistry in 'engine\utils\HandleRegistry.pas',
   StdLib in 'engine\Libs\StdLib.pas',
-  // …
+  // ...
 ```
 
-O hospedeiro cria o `TBasicEngine`, registra as bibliotecas que quiser expor e
-executa:
+The host creates the `TBasicEngine`, registers whichever libraries it wants to
+expose, and runs:
 
 ```pascal
 GC := TGarbageCollector.Create();
 Engine := TBasicEngine.Create();
 StdLib.RegisterStdFuncs(Engine.Functions);
 NumLib.RegisterNumFuncs(Engine.Functions);
-// …
+// ...
 if Engine.Compile(Source) = 0 then
   Engine.ExecuteProgram(Output);
 ```
 
-Numa execução sem interface, ligue `UnitGC.SkipProcessMessages := True` para o
-engine não tentar bombear mensagens.
+For a run with no user interface, set `UnitGC.SkipProcessMessages := True` so
+the engine does not try to pump a message loop.
 
-## Modelo de extensão
+## Extension model
 
-Funções nativas são registradas por assinatura em string: `nome@parâmetros`,
-onde o sufixo do nome indica o tipo de retorno (`$` string, `#` ponteiro,
-nenhum = número) e cada parâmetro é `n`, `$` ou `#`.
+Native functions are registered by a string signature, `name@parameters`, where
+the suffix on the name gives the return type (`$` string, `#` pointer, none =
+number) and each parameter is `n`, `$` or `#`.
 
 ```pascal
-FnData.Entry := n_abs;   Lib.Add('abs@n', FnData);      // abs(número)
-FnData.Entry := s_left;  Lib.Add('left$@$n', FnData);   // left$(texto, n)
+FnData.Entry := n_abs;   Lib.Add('abs@n', FnData);      // abs(number)
+FnData.Entry := s_left;  Lib.Add('left$@$n', FnData);   // left$(text, n)
 ```
 
-## Testes
+## Handle safety
 
-A suíte automatizada vive no repositório do IDE, em
+The language lets a program fabricate a pointer with `pointer#(n)`. Libraries
+must therefore never dereference a pointer they receive in order to check it.
+`HandleRegistry` answers from the pointer **value**: every object handed out as
+a handle registers itself along with its class, and validation is a dictionary
+lookup. Revocation happens through the object's destructor, or -- for objects
+freed by an FMX parent -- through `TComponent.FreeNotification`.
+
+```pascal
+if not IsHandleOf(P, TBasButton) then
+  // reject: unknown or stale handle
+```
+
+## Tests
+
+The automated suite lives in the IDE repository, under
 [Plan9Basic/tests](https://github.com/AndreMurtaX/Plan9Basic/tree/main/tests):
-um runner headless que compila e executa programas `.bas` e confere asserções.
-Mudanças neste repositório devem ser validadas por ela.
+a headless runner that compiles and executes `.bas` programs and checks
+assertions. Changes to this repository should be validated with it.
