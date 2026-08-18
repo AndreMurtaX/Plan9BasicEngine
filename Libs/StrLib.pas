@@ -1,4 +1,4 @@
-{******************************************************************************
+﻿{******************************************************************************
   Plan9Basic Interpreter Engine
 
   MIT License
@@ -1007,11 +1007,17 @@ var
   Pos: Integer;
 begin
   lastError := ERR_NONE;
+  //System.Pos counts from one and answers zero when absent; the language
+  //counts strings from zero, as mid$ and s$[[n]] do, and says -1.
+  //
+  //This used to compute the position and then throw it away, returning 1 for
+  //found and 0 for absent. Its own three-argument form, instrrev, and the
+  //documentation all describe a zero-based position.
   Pos := System.Pos(Args[1].s, Args[0].s);
   if Pos = 0 then
-    Result.n := Pos  // Not found
+    Result.n := -1
   else
-    Result.n := 1;  // substring in string
+    Result.n := Pos - 1;
 end;
 
 // instr@$$n - Find position of substring starting from position
