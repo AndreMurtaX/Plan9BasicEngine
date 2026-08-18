@@ -1567,27 +1567,26 @@ begin
     dialogMsg := dialogMsg + System.sLineBreak + 'Variables:' + System.sLineBreak + varInfo;
   dialogMsg := dialogMsg + System.sLineBreak + 'Press YES to continue, NO to stop execution.';
 
-  //Output to trace
+  //Report the whole frame to the trace, variables included, whether or not a
+  //dialog follows. Doing it here rather than inside the branch below keeps the
+  //record identical on every platform: a trace log that loses its values as
+  //soon as someone closes a window is half a log, and the desktop was the half
+  //losing them.
   if Assigned(FPrintProc) then
+  begin
     FPrintProc(PChar('[BREAKPOINT] ' + bkptMsg + ' (Line ' + IntToStr(srcLine) + ')' + System.sLineBreak));
+    for i := 0 to varCount - 1 do
+      FPrintProc(PChar('             ' + varNames[i] + ' = ' +
+                       varValues[i] + System.sLineBreak));
+  end;
 
   //Two things must hold before the VM may park: someone to ask, and a platform
   //that can answer a thread this very call has already blocked. The engine
   //checks both itself rather than trusting the host to have checked, so a host
   //that assigns ConfirmProc unconditionally cannot hang on Android or iOS. It
-  //gets the report below instead.
-  //
-  //Failing either, report the whole frame rather than the message alone: this
-  //dump is then everything a breakpoint can offer, so it carries what the
-  //dialog would have shown.
+  //gets the report above and carries on instead.
   if not (Assigned(FConfirmProc) and CanPauseForHostDialog) then
-  begin
-    if Assigned(FPrintProc) then
-      for i := 0 to varCount - 1 do
-        FPrintProc(PChar('             ' + varNames[i] + ' = ' +
-                         varValues[i] + System.sLineBreak));
     Exit();
-  end;
 
   //Pause execution until the host answers
   ExecStatus := TExecStatus.esIdle;

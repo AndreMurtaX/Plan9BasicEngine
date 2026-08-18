@@ -111,9 +111,8 @@ if CanPauseForHostDialog then   // declared in exec.pas
   Engine.ConfirmProc := HostConfirm;
 ```
 
-Wherever the VM may not park -- no `ConfirmProc`, or a platform that cannot
-answer -- `BREAKPOINT` reports the frame it would have shown (line, message and
-watched variables) and execution continues:
+`BREAKPOINT` always reports the frame -- line, message and watched variables --
+to the trace, so the record reads the same on every platform:
 
 ```
 [BREAKPOINT] checkpoint reached (Line 25)
