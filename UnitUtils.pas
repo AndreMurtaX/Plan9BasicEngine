@@ -31,8 +31,7 @@ uses
   System.Generics.Collections, System.TypInfo, System.Rtti, System.Variants,
   System.Net.HttpClientComponent, System.DateUtils, System.UITypes,
   System.IOUtils,
-  Data.DB,
-  FMX.Graphics, FMX.Types;
+  Data.DB;
 
 type
   TUtils = class
@@ -54,7 +53,6 @@ type
     class procedure SetProperty(Obj: TObject; Prop: String; Value: Variant);
     class procedure SetClassProperty(Obj: TObject; Prop: String; Value: TObject);
     class function GetTSetPropertyNames(AObject: TObject): TStringList;
-    class function LoadImageFromWeb(url: String; Bitmap: TBitmap): Boolean;
     class function LoadFromWeb(url: String; Code: TStringList): Boolean;
     class function ShiftStateToString(ss: TShiftState): String;
     class function GPTStrHash(const Str: string): Integer;
@@ -63,7 +61,9 @@ type
     class function SToBool(const AValue: String): Boolean;
     class function BToStr(const AValue: Boolean): String;
     class function ValidProperty(AName: String; ValidProps: TStringDynArray): Boolean;
-    class function ValidMethod(AObj: TFMXObject; AMethod: String): Boolean;
+    //Widened from TFMXObject to TObject: the body only reads ClassType, and
+    //the narrower type was the last thing forcing this unit to link FireMonkey.
+    class function ValidMethod(AObj: TObject; AMethod: String): Boolean;
     class function ColorToAlphaColor(const ColorStr: String): TAlphaColor;
     class function AlphaColorToStr(const Color: TAlphaColor): String;
     /// <summary>Resolve a relative data path to an absolute writable path.
@@ -263,7 +263,7 @@ begin
   Result := System.SysUtils.StrToDateTime(ADate, fs);
 end;
 
-class function TUtils.ValidMethod(AObj: TFMXObject; AMethod: String): Boolean;
+class function TUtils.ValidMethod(AObj: TObject; AMethod: String): Boolean;
 var
   Contexto: TRttiContext;
   Tipo: TRttiType;
@@ -803,28 +803,6 @@ begin
   result := index;
 end;
 
-class function TUtils.LoadImageFromWeb(url: String; Bitmap: TBitmap): Boolean;
-var
-  ms: TMemoryStream;
-  httpCli: TNetHTTPClient;
-begin
-  Result := true;
-
-  httpCli := TNetHTTPClient.Create(nil);
-  ms := TMemoryStream.Create();
-  try
-    try
-      httpCli.Get(url, ms);
-      ms.Position := 0;
-      Bitmap.LoadFromStream(ms);
-    except
-      Result := false;
-    end;
-  finally
-    ms.Free();
-    httpCli.Free();
-  end;
-end;
 
 class function TUtils.LoadFromWeb(url: String; Code: TStringList): Boolean;
 var

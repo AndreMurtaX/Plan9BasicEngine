@@ -54,6 +54,9 @@ type
     FRTException: Boolean;
     FFunctions: TFunctionsDictionary; //Dictionary with registered functions
     FOnPrintOutput: TPrintOutputEvent;
+    FInputProc: TInputProc;
+    FConfirmProc: TConfirmProc;
+    FYieldProc: TYieldProc;
     //Store data for all UDFs in the "compiled" source code.
     //Could be accessed after source code compilation to call for a specific
     //function in the host application
@@ -123,6 +126,12 @@ type
     property ScriptTimeOut: Int64 read FScriptTimeOut write SetScriptTimeOut;
     // PRINT instruction callback
     property OnPrintOutput: TPrintOutputEvent read FOnPrintOutput write FOnPrintOutput;
+    //How the host talks to a person. Leave nil in a host with no one to ask:
+    //INPUT then keeps its default value and BREAKPOINT simply continues.
+    //YieldProc is where a host with a message loop pumps it.
+    property InputProc: TInputProc read FInputProc write FInputProc;
+    property ConfirmProc: TConfirmProc read FConfirmProc write FConfirmProc;
+    property YieldProc: TYieldProc read FYieldProc write FYieldProc;
   end;
 
 implementation
@@ -231,6 +240,9 @@ begin
   Parser.exec.TimeOut := FScriptTimeOut;
   Parser.exec.TagObject := This;
   Parser.exec.PrintProc := PrintProc;
+  Parser.exec.InputProc := FInputProc;
+  Parser.exec.ConfirmProc := FConfirmProc;
+  Parser.exec.YieldProc := FYieldProc;
   Parser.exec.CallbackProc := OnProgress; // Debugger
   Parser.exec.GlobalVarNames := Parser.GlobalVars;
   Parser.exec.ExecuteProgram();
@@ -281,6 +293,9 @@ begin
   Parser.exec.TimeOut := FScriptTimeOut; //Set timeout
   Parser.exec.TagObject := This; //sets TAG object
   Parser.exec.PrintProc := PrintProc; //Output object
+  Parser.exec.InputProc := FInputProc;
+  Parser.exec.ConfirmProc := FConfirmProc;
+  Parser.exec.YieldProc := FYieldProc;
   Parser.exec.CallbackProc := OnProgress; //Callback proc (Debugger)
   Parser.exec.GlobalVarNames := Parser.GlobalVars; //Update global vars info
   Parser.exec.ExecuteFunction(

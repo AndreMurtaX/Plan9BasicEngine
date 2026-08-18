@@ -30,10 +30,6 @@ uses
   System.Classes, System.SysUtils, System.Character, System.Generics.Collections,
   System.TypInfo, System.Math, System.Diagnostics, System.UITypes, System.SyncObjs,
 
-  FMX.Types, FMX.Platform, FMX.Controls, FMX.Forms, FMX.Graphics,
-
-  FMX.Dialogs, FMX.DialogService, FMX.DialogService.Async,
-
   UnitUtils, lexer, UnitGC;
 
 const
@@ -131,6 +127,35 @@ type
   TExeFunc = procedure of object;
   //PRINT function type
   TPrintProc = procedure(p: PChar) of object;
+
+  //--------------------------------------------------------------------------
+  // Host interaction
+  //
+  // The engine does not know how the host talks to a person. An FMX host opens
+  // a dialog; a console host reads stdin; a server host may refuse outright.
+  // These follow the same shape as TPrintProc above, which already kept the
+  // PRINT statement free of any UI dependency.
+  //
+  // Both requests carry a continuation instead of returning a value, so a host
+  // whose dialogs are asynchronous can answer later without blocking the VM.
+  // While it waits the VM sits in esIdle and calls YieldProc.
+  //--------------------------------------------------------------------------
+
+  //Answer to an input request: Confirmed is False when the person cancelled.
+  TInputDoneProc = reference to procedure(Confirmed: Boolean;
+                                          const AValues: array of String);
+  TInputProc = procedure(const ACaption: String; const ALabels: array of String;
+                         const ADefaults: array of String;
+                         const ADone: TInputDoneProc) of object;
+
+  //Answer to a yes/no question, used by BREAKPOINT.
+  TConfirmDoneProc = reference to procedure(Confirmed: Boolean);
+  TConfirmProc = procedure(const AMessage: String;
+                           const ADone: TConfirmDoneProc) of object;
+
+  //Called while the VM is idle, and periodically during PRINT. A host with a
+  //message loop pumps it here. A headless host leaves it nil.
+  TYieldProc = procedure of object;
   //BASIC tokenized instructions
   TBasInstr = record
     id: TBasToken; //Token type
@@ -224,6 +249,9 @@ type
     //code lines responsible for its generation.
     srcLine: Integer;
     FPrintProc: TPrintProc;
+    FInputProc: TInputProc;
+    FConfirmProc: TConfirmProc;
+    FYieldProc: TYieldProc;
     strConst: String;
     sourceAlloc, ended: Boolean;
     asmLexer: TAsmLexer;
@@ -377,6 +405,11 @@ type
     property IP: Integer read PRG_IP;
     property SourceLine: Integer read srcLine;
     property PrintProc: TPrintProc read FPrintProc write FPrintProc;
+    //Leave these nil in a host with no user to ask: INPUT then yields its
+    //default value and BREAKPOINT simply continues.
+    property InputProc: TInputProc read FInputProc write FInputProc;
+    property ConfirmProc: TConfirmProc read FConfirmProc write FConfirmProc;
+    property YieldProc: TYieldProc read FYieldProc write FYieldProc;
     property CallbackProc: TNotifyEvent read FCallbackProc write FCallbackProc;
     property CallbackObj: TObject read FCallbackObj write FCallbackObj;
     property TimeOut: Int64 read FTimeOut write FTimeOut;
@@ -388,9 +421,6 @@ type
   end;
 
 implementation
-
-uses
-  TimerLib;  //For PauseAllTimers/ResumeAllTimers in breakpoint handling
 
 { TAsmLexer }
 
@@ -937,7 +967,8 @@ begin
   repeat //for each instruction...
     if ExecStatus <> TExecStatus.esRun then
     begin
-      Application.ProcessMessages();
+      if Assigned(FYieldProc) then
+        FYieldProc();
       // FIX #10: Prevent 100% CPU usage during breakpoint/pause.
       // Without sleep, this tight loop burns all CPU resources.
       // On mobile devices this drains battery and can trigger
@@ -1506,26 +1537,23 @@ begin
     dialogMsg := dialogMsg + System.sLineBreak + 'Variables:' + System.sLineBreak + varInfo;
   dialogMsg := dialogMsg + System.sLineBreak + 'Press YES to continue, NO to stop execution.';
 
-  //Pause all timers
-  PauseAllTimers();
-
   //Output to trace
   if Assigned(FPrintProc) then
     FPrintProc(PChar('[BREAKPOINT] ' + bkptMsg + ' (Line ' + IntToStr(srcLine) + ')' + System.sLineBreak));
 
-  //Pause execution until dialog is closed
+  //With no host to ask, a breakpoint cannot stop anything: carry on.
+  if not Assigned(FConfirmProc) then
+    Exit();
+
+  //Pause execution until the host answers
   ExecStatus := TExecStatus.esIdle;
 
-  //Show dialog and wait for user response using async dialog service
-  TDialogServiceAsync.MessageDialog(
-    dialogMsg,
-    TMsgDlgType.mtConfirmation,
-    [TMsgDlgBtn.mbYes, TMsgDlgBtn.mbNo],
-    TMsgDlgBtn.mbYes,
-    0,
-    procedure(const AResult: TModalResult)
+  //Suspending whatever the host has running -- timers, animations -- is the
+  //host's business, inside its own handler. The engine does not know they exist.
+  FConfirmProc(dialogMsg,
+    procedure(Confirmed: Boolean)
     begin
-      if AResult = mrNo then
+      if not Confirmed then
       begin
         //User chose to stop execution
         ended := true;
@@ -1534,8 +1562,6 @@ begin
       end
       else
       begin
-        //User chose to continue - resume timers
-        ResumeAllTimers();
         if Assigned(FPrintProc) then
           FPrintProc(PChar('[BREAKPOINT] Execution resumed' + System.sLineBreak));
       end;
@@ -1820,10 +1846,15 @@ begin
   begin
     try
       try
-        FMX.DialogService.Async.TDialogServiceAsync.InputQuery(sCaption, ALabels, AValues,
-          procedure(const AResult: TModalResult; const AValues: array of string)
+        //No host to ask: keep the default the program supplied and go on,
+        //rather than failing. A console host installs InputProc and reads stdin.
+        if not Assigned(FInputProc) then
+          Exit();
+
+        FInputProc(sCaption, ALabels, AValues,
+          procedure(Confirmed: Boolean; const AValues: array of String)
           begin
-            if AResult = mrOk then
+            if Confirmed then
             begin
               if not TryStrToFloat(AValues[0], Value) then
                 Value := 0.0;
@@ -1878,9 +1909,9 @@ begin
             end;
           end);
       except
+        //Unreachable as written before: Exception is the ancestor, so the
+        //EInvalidFmxHandle clause that used to follow never fired.
         on E:Exception do
-          RTError(rteUserMessage, atkNull, E.Message);
-        on E:EInvalidFmxHandle do
           RTError(rteUserMessage, atkNull, E.Message);
       end;
     finally
@@ -1910,10 +1941,15 @@ begin
   begin
     try
       try
-        FMX.DialogService.Async.TDialogServiceAsync.InputQuery(sCaption, ALabels, AValues,
-          procedure(const AResult: TModalResult; const AValues: array of string)
+        //No host to ask: keep the default the program supplied and go on,
+        //rather than failing. A console host installs InputProc and reads stdin.
+        if not Assigned(FInputProc) then
+          Exit();
+
+        FInputProc(sCaption, ALabels, AValues,
+          procedure(Confirmed: Boolean; const AValues: array of String)
           begin
-            if AResult = mrOk then
+            if Confirmed then
             begin
               if not programFunctions[FnSignt].FarCall then //"near" function
               begin
@@ -1965,9 +2001,9 @@ begin
             end;
           end);
       except
+        //Unreachable as written before: Exception is the ancestor, so the
+        //EInvalidFmxHandle clause that used to follow never fired.
         on E:Exception do
-          RTError(rteUserMessage, atkNull, E.Message);
-        on E:EInvalidFmxHandle do
           RTError(rteUserMessage, atkNull, E.Message);
       end;
     finally
@@ -2430,7 +2466,8 @@ begin
     if (FUIRefreshInterval = 0) or
        (TThread.GetTickCount - FLastUIRefresh >= Cardinal(FUIRefreshInterval)) then
     begin
-      Application.ProcessMessages();
+      if Assigned(FYieldProc) then
+        FYieldProc();
       FLastUIRefresh := TThread.GetTickCount;
     end;
   end;
