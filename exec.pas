@@ -420,7 +420,33 @@ type
     property UIRefreshInterval: Integer read FUIRefreshInterval write FUIRefreshInterval;
   end;
 
+//BREAKPOINT parks the VM in a wait loop on whatever thread called
+//ExecuteProgram, and resumes only when the host answers. That works wherever
+//the host can still deliver the answer while that thread is blocked: the
+//Windows, Linux and macOS message queues all let a modal dialog run from
+//inside such a loop.
+//
+//It does not work on Android or iOS. There the answer comes back through the
+//platform's own looper, which is the very thing that called into the
+//application. A parked VM blocks the mechanism that would wake it, the wait
+//never ends, and the system reports the process as unresponsive.
+//
+//Hosts should consult this before installing ConfirmProc. Left unset, the
+//engine degrades BREAKPOINT to a trace dump of the frame, which is the part
+//that still carries meaning on a device, where the application is its own
+//debugger and there is no separate window to pause.
+function CanPauseForHostDialog: Boolean;
+
 implementation
+
+function CanPauseForHostDialog: Boolean;
+begin
+  {$IF DEFINED(ANDROID) or DEFINED(IOS)}
+  Result := False;
+  {$ELSE}
+  Result := True;
+  {$ENDIF}
+end;
 
 { TAsmLexer }
 
@@ -1541,9 +1567,18 @@ begin
   if Assigned(FPrintProc) then
     FPrintProc(PChar('[BREAKPOINT] ' + bkptMsg + ' (Line ' + IntToStr(srcLine) + ')' + System.sLineBreak));
 
-  //With no host to ask, a breakpoint cannot stop anything: carry on.
+  //With no host to ask, a breakpoint cannot stop anything, so report the whole
+  //frame instead of just the message and carry on. Where the VM cannot be
+  //parked at all -- see CanPauseForHostDialog -- this dump is everything a
+  //breakpoint can offer, so it carries what the dialog would have shown.
   if not Assigned(FConfirmProc) then
+  begin
+    if Assigned(FPrintProc) then
+      for i := 0 to varCount - 1 do
+        FPrintProc(PChar('             ' + varNames[i] + ' = ' +
+                         varValues[i] + System.sLineBreak));
     Exit();
+  end;
 
   //Pause execution until the host answers
   ExecStatus := TExecStatus.esIdle;

@@ -75,6 +75,51 @@ if Engine.Compile(Source) = 0 then
 For a run with no user interface, set `UnitGC.SkipProcessMessages := True` so
 the engine does not try to pump a message loop.
 
+## Host interaction
+
+The engine never opens a window. Four callbacks carry everything that needs a
+person or a message loop, and a host installs only the ones it can serve:
+
+| Callback | Used by | Left unset |
+|---|---|---|
+| `PrintProc` | `PRINT`, `PRINTLN` | output is discarded |
+| `InputProc` | `INPUT` | the statement keeps the default the program supplied |
+| `ConfirmProc` | `BREAKPOINT` | the frame goes to the trace and execution continues |
+| `YieldProc` | idle wait, and periodically during `PRINT` | nothing is pumped |
+
+`InputProc` and `ConfirmProc` both receive a continuation instead of returning a
+value, so a host whose dialogs are asynchronous can answer later.
+
+### BREAKPOINT and the calling thread
+
+`BREAKPOINT` is the one construct that parks the VM: it waits in a loop on
+whichever thread called `ExecuteProgram` until `ConfirmProc` answers. That is
+safe only where the platform can deliver a modal answer while that thread is
+blocked -- true of the Windows, Linux and macOS message queues, false on Android
+and iOS. There the answer travels back through the platform's own looper, which
+is the very thing that called into the application: a parked VM blocks the
+mechanism that would wake it, the wait never ends, and the system kills the
+process as unresponsive.
+
+Hosts should gate the assignment rather than discover this on a device:
+
+```pascal
+if CanPauseForHostDialog then   // declared in exec.pas
+  Engine.ConfirmProc := HostConfirm;
+```
+
+With `ConfirmProc` unset, `BREAKPOINT` reports the frame it would have shown --
+line, message and watched variables -- and execution continues:
+
+```
+[BREAKPOINT] checkpoint reached (Line 25)
+             n = 7
+             s$ = "frame"
+```
+
+That is the half of a breakpoint which still carries meaning on a device, where
+the application is its own debugger and there is no separate window to pause.
+
 ## Extension model
 
 Native functions are registered by a string signature, `name@parameters`, where
