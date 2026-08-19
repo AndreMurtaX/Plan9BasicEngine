@@ -1,4 +1,4 @@
-{******************************************************************************
+﻿{******************************************************************************
   Plan9Basic Interpreter Engine
 
   MIT License
@@ -127,6 +127,10 @@ begin
   RAG := TRAGEngine.Create(ResolvedPath);
   RAG.LoadIndex;
 
+  //Without this every rag_* call fails validation: ValidateRAG answers from the
+  //registry, and nothing was ever added to it.
+  RegisterHandle(RAG);
+
   if Assigned(UnitGC.GC) then
     UnitGC.GC.Add<TRAGEngine>(RAG, RAG_GC_TAG);
 
@@ -138,8 +142,12 @@ function n_rag_free(var Args: array of TAsmData): TAsmData;
 begin
   Result := Default(TAsmData);
 
-  if (Args[0].p <> nil) and (TObject(Args[0].p) is TRAGEngine) then
+  //Asking the registry rather than casting: the language lets a program invent
+  //a pointer with pointer#(n), and `TObject(P) is TRAGEngine` follows whatever
+  //address it is handed, which is recoverable on Windows and fatal elsewhere.
+  if IsHandleOf(Args[0].p, TRAGEngine) then
   begin
+    UnregisterHandle(TObject(Args[0].p));
     if Assigned(UnitGC.GC) then
       UnitGC.GC.Release(Args[0].p);
     TRAGEngine(Args[0].p).Free();
