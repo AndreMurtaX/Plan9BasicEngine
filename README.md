@@ -1,15 +1,31 @@
+> ### This repository is no longer developed
+>
+> Everything here moved into
+> **[Plan9Basic](https://github.com/AndreMurtaX/Plan9Basic)** on 2026-08-19,
+> which now holds the whole project in one tree — interpreter, standard
+> library, the IDE, the applet runner, the test suites and the documentation.
+>
+> Nothing was deleted. The history below is intact and any clone or submodule
+> pointing here keeps resolving, so old checkouts do not break. But no fix
+> lands here any more, and the copy in `Plan9Basic` is the one that is
+> maintained.
+>
+> **Why.** The split cost more than it paid. A change to the interpreter was
+> not finished when it compiled: it had to be committed and pushed here, then
+> have its pointer bumped in each consumer separately. Forget one and that
+> consumer quietly keeps building the previous commit — no error, no failing
+> build, just an older interpreter. With one repository the fix reaches
+> everything that uses it, or nothing.
+
 # Plan9BasicEngine
 
 Core of the **Plan9Basic** interpreter and the standard library shared by the
 projects that host it. Delphi / FireMonkey, MIT.
 
-This repository exists so that there is **a single copy** of this code. It is
-consumed as a submodule by:
-
-| Project | Role |
-|---|---|
-| [Plan9Basic](https://github.com/AndreMurtaX/Plan9Basic) | IDE and development environment |
-| [Plan9BasicAppletRunner](https://github.com/AndreMurtaX/Plan9BasicAppletRunner) | runner for distributed applets |
+This repository existed so that there was **a single copy** of this code, shared
+as a submodule by the IDE and the applet runner. Both of those now live in
+[Plan9Basic](https://github.com/AndreMurtaX/Plan9Basic) alongside it, which
+achieves the same thing without a pointer to keep in step.
 
 ## Contents
 
