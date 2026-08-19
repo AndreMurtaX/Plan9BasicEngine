@@ -1,4 +1,4 @@
-{******************************************************************************
+﻿{******************************************************************************
   Plan9Basic Interpreter Engine
 
   MIT License
@@ -1448,6 +1448,8 @@ var
 begin
   // Creation functions
   Fn.FarCall := True;
+  //No FireMonkey here, so these run wherever the VM stands.
+  Fn.NeedsUIThread := False;
   Fn.Entry := @p_json_object; Funcs.Add('json_object#@', Fn);
   Fn.Entry := @p_json_array; Funcs.Add('json_array#@', Fn);
   Fn.Entry := @p_json_parse; Funcs.Add('json_parse#@$', Fn);

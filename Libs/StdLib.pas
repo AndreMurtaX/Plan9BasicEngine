@@ -1,4 +1,4 @@
-{******************************************************************************
+﻿{******************************************************************************
   Plan9Basic Interpreter Engine
 
   MIT License
@@ -252,6 +252,8 @@ var
 begin
   FnData := Default(TLinkFunction);
   FnData.FarCall := True;
+  //No FireMonkey here, so these run wherever the VM stands.
+  FnData.NeedsUIThread := False;
 
   FnData.Entry := s_classname; Lib.Add('classname$@#', FnData);
   FnData.Entry := n_pause; Lib.Add('pause@n', FnData);

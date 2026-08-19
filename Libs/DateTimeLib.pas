@@ -1,4 +1,4 @@
-{******************************************************************************
+﻿{******************************************************************************
   Plan9Basic Interpreter Engine
 
   MIT License
@@ -453,6 +453,8 @@ var
   FnData: TLinkFunction;
 begin
   FnData.FarCall := True;
+  //No FireMonkey here, so these run wherever the VM stands.
+  FnData.NeedsUIThread := False;
   FnData.Entry := n_now; Lib.Add('now@', FnData);
   FnData.Entry := n_date; Lib.Add('date@', FnData);
   FnData.Entry := s_date; Lib.Add('date$@', FnData);

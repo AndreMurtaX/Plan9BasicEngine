@@ -595,6 +595,8 @@ begin
   lastErrorMsg := '';
 
   Fn.FarCall := True;
+  //FireMonkey, so these run on the UI thread when the VM does not.
+  Fn.NeedsUIThread := True;
 
   // Creation and Destruction
   Fn.Entry := @p_timer_create; Lib.Add('timer#@', Fn);

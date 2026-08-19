@@ -1,4 +1,4 @@
-{******************************************************************************
+﻿{******************************************************************************
   Plan9Basic Interpreter Engine
 
   MIT License
@@ -787,6 +787,8 @@ var
   FnData: TLinkFunction;
 begin
   FnData.FarCall := True;
+  //No FireMonkey here, so these run wherever the VM stands.
+  FnData.NeedsUIThread := False;
   
   // Error handling
   FnData.Entry := @n_ziperror; Lib.Add('ziperror@', FnData);

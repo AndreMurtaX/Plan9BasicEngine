@@ -745,6 +745,8 @@ var
   nStr: String;
 begin
   FnData.FarCall := True;
+  //No FireMonkey here, so these run wherever the VM stands.
+  FnData.NeedsUIThread := False;
 
   //----------------------------------------------------------------------------
   // Array creation - register for 1-10 dimensions

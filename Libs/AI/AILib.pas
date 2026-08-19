@@ -2615,6 +2615,8 @@ begin
   gEngine := Eng;
   gOutput := OutP;
   Fn.FarCall := True;
+  //No FireMonkey here, so these run wherever the VM stands.
+  Fn.NeedsUIThread := False;
 
   // Error handling (4)
   Fn.Entry := @n_ai_error; Funcs.Add('ai_error@', Fn);

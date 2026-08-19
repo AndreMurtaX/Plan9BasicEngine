@@ -1,4 +1,4 @@
-{******************************************************************************
+﻿{******************************************************************************
   Plan9Basic Interpreter Engine
 
   MIT License
@@ -275,6 +275,8 @@ var
   FnData: TLinkFunction;
 begin
   FnData.FarCall := True;
+  //No FireMonkey here, so these run wherever the VM stands.
+  FnData.NeedsUIThread := False;
   FnData.Entry := n_paramcount;  Lib.Add('paramcount@', FnData);
   FnData.Entry := s_paramstr;  Lib.Add('paramstr$@n', FnData);
   FnData.Entry := n_chdir; Lib.Add('chdir@$', FnData);

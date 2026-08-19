@@ -460,6 +460,8 @@ var
 begin
   Fn := Default(TLinkFunction);
   Fn.FarCall := True;
+  //No FireMonkey here, so these run wherever the VM stands.
+  Fn.NeedsUIThread := False;
 
   // Engine lifecycle
   Fn.Entry := @p_rag_Create; Lib.Add('rag#@$', Fn);

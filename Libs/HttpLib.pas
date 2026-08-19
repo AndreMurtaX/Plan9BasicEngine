@@ -1,4 +1,4 @@
-{******************************************************************************
+﻿{******************************************************************************
   Plan9Basic Interpreter Engine
 
   MIT License
@@ -2217,6 +2217,8 @@ var
   Fn: TLinkFunction;
 begin
   Fn.FarCall := True;
+  //No FireMonkey here, so these run wherever the VM stands.
+  Fn.NeedsUIThread := False;
 
   // Error handling
   Fn.Entry := @n_http_error; Funcs.Add('http_error@', Fn);

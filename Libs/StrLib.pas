@@ -1556,6 +1556,8 @@ var
   FnData: TLinkFunction;
 begin
   FnData.FarCall := True;
+  //No FireMonkey here, so these run wherever the VM stands.
+  FnData.NeedsUIThread := False;
 
   // Error handling
   FnData.Entry := n_strerror; Lib.Add('strerror@', FnData);
