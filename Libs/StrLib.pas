@@ -1203,7 +1203,7 @@ end;
 function n_endsstr(var Args: Array of TAsmData): TAsmData;
 begin
   lastError := ERR_NONE;
-  if System.StrUtils.EndsStr(Args[0].s, Args[1].s) then
+  if System.StrUtils.EndsStr(Args[1].s, Args[0].s) then
     Result.n := 1
   else
     Result.n := 0;
@@ -1212,7 +1212,7 @@ end;
 function n_endstext(var Args: Array of TAsmData): TAsmData;
 begin
   lastError := ERR_NONE;
-  if System.StrUtils.EndsText(Args[0].s, Args[1].s) then
+  if System.StrUtils.EndsText(Args[1].s, Args[0].s) then
     Result.n := 1
   else
     Result.n := 0;
@@ -1236,10 +1236,15 @@ begin
   Result.s := System.StrUtils.ReverseString(Args[0].s);
 end;
 
+//startsstr, startstext, endsstr and endstext take the text first, as
+//containsstr always did. Delphi's System.StrUtils is irregular here --
+//ContainsStr(AText, ASubText) but StartsStr(ASubText, AText) -- and the
+//arguments are swapped on the way through rather than passed straight
+//down, so the language stays regular where the library it wraps is not.
 function n_startsstr(var Args: Array of TAsmData): TAsmData;
 begin
   lastError := ERR_NONE;
-  if System.StrUtils.StartsStr(Args[0].s, Args[1].s) then
+  if System.StrUtils.StartsStr(Args[1].s, Args[0].s) then
     Result.n := 1
   else
     Result.n := 0;
@@ -1248,7 +1253,7 @@ end;
 function n_startstext(var Args: Array of TAsmData): TAsmData;
 begin
   lastError := ERR_NONE;
-  if System.StrUtils.StartsText(Args[0].s, Args[1].s) then
+  if System.StrUtils.StartsText(Args[1].s, Args[0].s) then
     Result.n := 1
   else
     Result.n := 0;
