@@ -1,4 +1,4 @@
-{******************************************************************************
+﻿{******************************************************************************
   Plan9Basic Interpreter Engine
 
   MIT License
@@ -552,38 +552,38 @@ end;
 //Returns "true" if file was loaded, "false" otherwise.
 //Read text is returned in out var "s"
 class function TUtils.OpenStr(filename: String; Enc: TEncoding; out s: String): boolean;
-var
-  Strings: TStrings;
 begin
-  Strings := TStringList.Create();
+  //The old version also leaked its TStringList: the except arm exited before
+  //the Free.
+  s := '';
+  Result := True;
   try
-    Result := True;
-    Strings.LoadFromFile(filename, Enc);
+    s := TFile.ReadAllText(filename, Enc);
   except
     Result := False;
-    Exit;
   end;
-  s := Strings.Text;
-  Strings.Free();
 end;
 
 //Save a text file from memory to disk.
 //Specify file encoding type.
 //Returns "true" if file was saved, "false" otherwise.
 //Text to save is defined in var "s"
+//Both halves write and read the text as given. They used to go through a
+//TStringList, which is a list of lines and not a string: assigning to .Text
+//normalised the line endings, and both SaveToFile and reading .Text back added
+//a trailing break. Eleven characters went in and thirteen came out, so
+//savetext$ and opentext$ were not a round trip.
+//
+//TFile does what the names promise. It is what IOUtilsLib already used for
+//file_writealltext and file_readalltext$, which never had the problem.
 class function TUtils.SaveStr(const filename: String; Enc: TEncoding; s: String): boolean;
-var
-  Strings: TStrings;
 begin
-  Strings := TStringList.Create();
+  Result := True;
   try
-    Result := True;
-    Strings.Text := s;
-    Strings.SaveToFile(filename, Enc);
+    TFile.WriteAllText(filename, s, Enc);
   except
-    Result := false;
+    Result := False;
   end;
-  Strings.Free();
 end;
 
 class procedure TUtils.SetClassProperty(Obj: TObject; Prop: String; Value: TObject);
