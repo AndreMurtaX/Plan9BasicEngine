@@ -119,6 +119,15 @@ type
   TLinkFunction = record //Functions call type and entry point
     FarCall: Boolean; //True: imported from Delphi / False: user defined
     Entry: TBindFunction; //Function header if imported
+    //True for a library that touches FireMonkey. FMX is not thread-safe, so
+    //when the VM is not on the UI thread these calls have to be handed to it
+    //rather than made where the VM stands. A library sets this once in its
+    //Register procedure, before its first Add, because the record is copied by
+    //value into every entry.
+    //
+    //It costs nothing while the VM runs on the UI thread: with no marshaller
+    //installed, CallNative calls straight through.
+    NeedsUIThread: Boolean;
   end;
   //The function signature is the dictionary index
   TFunctionsDictionary = TDictionary<String, TLinkFunction>;
@@ -156,6 +165,15 @@ type
   //Called while the VM is idle, and periodically during PRINT. A host with a
   //message loop pumps it here. A headless host leaves it nil.
   TYieldProc = procedure of object;
+
+  //Runs AProc on whatever thread FireMonkey belongs to, and does not return
+  //until it has. A host that keeps the VM on the UI thread leaves this nil,
+  //and every native call is made where the VM already stands.
+  //
+  //This is the seam the VM needs in order to move off the UI thread: the GUI
+  //libraries touch FMX from 3,899 functions, but the VM reaches all of them
+  //through one place, so the handover belongs here and not in the libraries.
+  TMarshalProc = procedure(const AProc: TThreadMethod) of object;
   //BASIC tokenized instructions
   TBasInstr = record
     id: TBasToken; //Token type
@@ -252,6 +270,12 @@ type
     FInputProc: TInputProc;
     FConfirmProc: TConfirmProc;
     FYieldProc: TYieldProc;
+    FMarshalProc: TMarshalProc;
+    //Set for the duration of one marshalled call, because an open array cannot
+    //be captured by the parameterless method Synchronize wants.
+    FCallFn: TLinkFunction;
+    FCallArgs: TArray<TAsmData>;
+    FCallResult: TAsmData;
     strConst: String;
     sourceAlloc, ended: Boolean;
     asmLexer: TAsmLexer;
@@ -282,6 +306,10 @@ type
     //already have guards (see fInitFunc); globals did not, and range checking
     //is enabled only in the Debug configuration.
     function GlobalIndexValid(Index: Integer): Boolean;
+    procedure RunPendingCall();
+    //Every native call the VM makes goes through here.
+    function CallNative(const AFn: TLinkFunction;
+                        var Args: array of TAsmData): TAsmData;
     procedure PushAsmData(const dt: TAsmData; st: TExprKind);
     function PopAsmData(checkType: TExprKind): TAsmData;
     procedure Pop();
@@ -410,6 +438,7 @@ type
     property InputProc: TInputProc read FInputProc write FInputProc;
     property ConfirmProc: TConfirmProc read FConfirmProc write FConfirmProc;
     property YieldProc: TYieldProc read FYieldProc write FYieldProc;
+    property MarshalProc: TMarshalProc read FMarshalProc write FMarshalProc;
     property CallbackProc: TNotifyEvent read FCallbackProc write FCallbackProc;
     property CallbackObj: TObject read FCallbackObj write FCallbackObj;
     property TimeOut: Int64 read FTimeOut write FTimeOut;
@@ -450,6 +479,29 @@ begin
   {$ELSE}
   Result := True;
   {$ENDIF}
+end;
+
+procedure TExec.RunPendingCall();
+begin
+  FCallResult := FCallFn.Entry(FCallArgs);
+end;
+
+function TExec.CallNative(const AFn: TLinkFunction;
+                          var Args: array of TAsmData): TAsmData;
+var
+  i: Integer;
+begin
+  //The ordinary path, and the only one taken while the VM owns the UI thread.
+  if not (AFn.NeedsUIThread and Assigned(FMarshalProc)) then
+    Exit(AFn.Entry(Args));
+
+  //Synchronize takes a parameterless method, so the call travels in fields.
+  SetLength(FCallArgs, Length(Args));
+  for i := 0 to High(Args) do
+    FCallArgs[i] := Args[i];
+  FCallFn := AFn;
+  FMarshalProc(RunPendingCall);
+  Result := FCallResult;
 end;
 
 { TAsmLexer }
@@ -1145,7 +1197,7 @@ begin
     end;
   //Calls 'numF' and push the result
   try
-    dt := numF.Entry(args);
+    dt := CallNative(numF, args);
   except
     on E: Exception do
     begin
@@ -1207,7 +1259,7 @@ begin
     end;
   //Calls 'ptrF' and push the result
   try
-    dt := ptrF.Entry(args);
+    dt := CallNative(ptrF, args);
   except
     on E: Exception do
     begin
@@ -1269,7 +1321,7 @@ begin
     end;
   //Calls 'strF' and push the result
   try
-    dt := strF.Entry(Args);
+    dt := CallNative(strF, Args);
   except
     on E: Exception do
     begin
@@ -1813,7 +1865,7 @@ begin
       end;
     //Call the FAR function, store result in "dt"
     try
-      dt := farF.Entry(Args);
+      dt := CallNative(farF, Args);
     except
       on E: Exception do
       begin
@@ -1946,7 +1998,7 @@ begin
               end;
               Args[0].n := Value;
               //Call the FAR function, store result in "dt"
-              dt := farF.Entry(Args);
+              dt := CallNative(farF, Args);
               //Push function return value into the stack
               PushAsmData(dt, ekNumber);
             end;
@@ -2038,7 +2090,7 @@ begin
               end;
               Args[0].s := AValues[0];
               //Call the FAR function, store result in "dt"
-              dt := farF.Entry(Args);
+              dt := CallNative(farF, Args);
               //Push function return value into the stack
               PushAsmData(dt, ekString);
             end;
@@ -2295,7 +2347,7 @@ begin
     begin
       //Call the FAR function, store result in "dt"
       try
-        dt := farF.Entry(Args);
+        dt := CallNative(farF, Args);
       except
         on E: Exception do
         begin
